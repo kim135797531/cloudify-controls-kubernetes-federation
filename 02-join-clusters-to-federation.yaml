@@ -1,0 +1,82 @@
+tosca_definitions_version: cloudify_dsl_1_3
+
+description: >
+  Based on this example: https://github.com/font/k8s-example-apps/tree/master/pacman-nginx-app
+
+imports:
+  - https://raw.githubusercontent.com/cloudify-cosmo/cloudify-manager/4.1/resources/rest-service/cloudify/types/types.yaml
+  - https://raw.githubusercontent.com/kim135797531/cloudify-kubernetes-plugin/master/plugin.yaml
+  # - https://raw.githubusercontent.com/cloudify-incubator/cloudify-kubernetes-plugin/1.2.1/plugin.yaml
+  # - plugins/cloudify-kubernetes-plugin/plugin.yaml
+  - http://cloudify.co/spec/diamond-plugin/1.3.6/plugin.yaml
+
+inputs:
+
+  kubernetes_federation_configuration:
+    default:
+        apiVersion: v1
+        clusters:
+        - cluster:
+            certificate-authority-data: TRUNCATED
+            server: https://1.1.1.1
+          name: fellowship
+        contexts:
+        - context:
+            cluster: fellowship
+            user: fellowship
+          name: fellowship
+        current-context: fellowship
+        kind: Config
+        preferences: {}
+        users:
+        - name: fellowship
+          user:
+            as-user-extra: {}
+            client-certificate-data: TRUNCATED
+            client-key-data: TRUNCATED
+            token: TRUNCATED
+        - name: fellowship-basic-auth
+          user:
+            as-user-extra: {}
+            password: TRUNCATED
+            username: admin
+
+node_templates:
+
+  kubernetes_cluster_1:
+    type: cloudify.kubernetes.resources.Cluster
+    properties:
+      federation_host: 2.2.2.2
+      federation_host_username: admin
+      federation_host_password: TRUNCATED
+      federate_context: fellowship
+      federating_cluster_name: cluster-fed-1
+      host_cluster_context: cluster-1
+      cluster_context: cluster-1
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: kubernetes_federation
+      - type: cloudify.kubernetes.relationships.managed_by_master
+        target: kubernetes_federation
+
+  kubernetes_cluster_2:
+    type: cloudify.kubernetes.resources.Cluster
+    properties:
+      federation_host: 3.3.3.3
+      federation_host_username: admin
+      federation_host_password: TRUNCATED
+      federate_context: fellowship
+      federating_cluster_name: cluster-fed-2
+      host_cluster_context: cluster-1
+      cluster_context: cluster-2
+    relationships:
+      - type: cloudify.relationships.contained_in
+        target: kubernetes_federation
+      - type: cloudify.kubernetes.relationships.managed_by_master
+        target: kubernetes_federation
+
+  kubernetes_federation:
+    type: cloudify.kubernetes.nodes.Federation
+    properties:
+      configuration:
+        file_content: { get_input: kubernetes_federation_configuration }
